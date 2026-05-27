@@ -2,18 +2,17 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parents[2]
-ROOT = APP_DIR.parents[1]
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 
 MAIL_STATE_DIR = Path.home() / ".local" / "state" / "hanauta" / "email-client"
 MAIL_DB_PATH = MAIL_STATE_DIR / "mail.sqlite3"
 MAIL_DESKTOP_ID = "hanauta-mail.desktop"
-MAIL_DESKTOP_SOURCE = ROOT / "hanauta" / "config" / "applications" / MAIL_DESKTOP_ID
+MAIL_DESKTOP_SOURCE = PLUGIN_ROOT / "config" / "applications" / MAIL_DESKTOP_ID
 MAIL_DESKTOP_LOCAL = Path.home() / ".local" / "share" / "applications" / MAIL_DESKTOP_ID
 MAIL_DESKTOP_SYSTEM = Path("/usr/local/share/applications") / MAIL_DESKTOP_ID
-MAIL_DESKTOP_INSTALL_SCRIPT = ROOT / "hanauta" / "scripts" / "install_mail_desktop.sh"
+MAIL_DESKTOP_INSTALL_SCRIPT = PLUGIN_ROOT / "scripts" / "install_mail_desktop.sh"
 MAIL_DESKTOP_SYSTEM_INSTALL_SCRIPT = (
-    ROOT / "hanauta" / "scripts" / "install_mail_desktop_system.sh"
+    PLUGIN_ROOT / "scripts" / "install_mail_desktop_system.sh"
 )
 
 

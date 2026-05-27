@@ -4,10 +4,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import signal
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QTimer, QUrl
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
 try:
@@ -46,6 +47,32 @@ ICON_NAMES = [
     "X",
 ]
 
+ICON_FILE_MAP = {
+    "Archive": "archive",
+    "Bell": "notifications",
+    "CheckCircle2": "check_circle",
+    "ChevronDown": "keyboard_arrow_down",
+    "Clock": "schedule",
+    "Inbox": "inbox",
+    "Mail": "mail",
+    "MailOpen": "mark_email_read",
+    "Menu": "menu",
+    "MoreVertical": "more_vert",
+    "Paperclip": "attach_file",
+    "Pencil": "edit",
+    "Plus": "add",
+    "Reply": "reply",
+    "Search": "search",
+    "Send": "send",
+    "Settings": "settings",
+    "ShieldCheck": "verified_user",
+    "Sparkles": "auto_awesome_motion",
+    "Star": "star",
+    "Trash2": "delete",
+    "UserCircle2": "account_circle",
+    "X": "close",
+}
+
 
 def _load_theme_mode() -> str:
     try:
@@ -71,12 +98,28 @@ def _transform_code_to_babel(code: str) -> str:
     transformed = transformed.replace("export default function HanautaEmailInterface()", "function HanautaEmailInterface()")
 
     icon_defs = "\n".join(
-        f"const {name} = (props) => React.createElement('span', {{...props, style: {{display: 'inline-block', width: '1em', height: '1em', borderRadius: '999px', border: '1.4px solid currentColor'}}}});"
+        f"const {name} = (props) => __materialIcon('{ICON_FILE_MAP[name]}', props);"
         for name in ICON_NAMES
     )
 
     scaffolding = f"""
 const {{ useMemo, useState }} = React;
+const __materialIcon = (iconName, props = {{}}) => {{
+  const userStyle = (props && props.style) ? props.style : {{}};
+  const maskValue = `url(\"assets/material-symbols/${{iconName}}.svg\") center / contain no-repeat`;
+  const style = {{
+    display: 'inline-block',
+    width: '1em',
+    height: '1em',
+    flexShrink: 0,
+    verticalAlign: 'middle',
+    backgroundColor: 'currentColor',
+    mask: maskValue,
+    WebkitMask: maskValue,
+    ...userStyle,
+  }};
+  return React.createElement('span', {{ ...props, style, 'aria-hidden': true }});
+}};
 const motion = new Proxy({{}}, {{
   get: (_target, key) => (props) => React.createElement(typeof key === 'string' ? key : 'div', props, props && props.children)
 }});
@@ -170,6 +213,16 @@ def main() -> int:
     if "--disable-vulkan" not in chromium_flags:
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (chromium_flags + " --disable-vulkan").strip()
     app = QApplication(sys.argv)
+
+    def _handle_sigint(_signum: int, _frame) -> None:
+        print("[hanauta-mail] SIGINT received, shutting down")
+        app.quit()
+
+    signal.signal(signal.SIGINT, _handle_sigint)
+    keepalive = QTimer()
+    keepalive.timeout.connect(lambda: None)
+    keepalive.start(250)
+
     window = MailWindow()
     window.show()
     return app.exec()

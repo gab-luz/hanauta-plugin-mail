@@ -5,7 +5,6 @@ import {
   Bell,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Inbox,
   Mail,
   MailOpen,
@@ -18,7 +17,6 @@ import {
   Search,
   Send,
   Settings,
-  ShieldCheck,
   Sparkles,
   Star,
   Trash2,
@@ -26,15 +24,107 @@ import {
   X,
 } from "lucide-react";
 
-const emails = [];
+const emails = [
+  {
+    id: "m1",
+    sender: "Ana Costa",
+    subject: "Contrato revisado para assinatura",
+    preview: "Atualizei a cláusula de prazo e anexei a versão final em PDF.",
+    body: "Oi,\n\nSegue o contrato revisado com as alterações alinhadas hoje.\nSe estiver tudo certo, podemos assinar até o fim da tarde.\n\nObrigada!",
+    tag: "Work",
+    tone: "primary",
+    folder: "Inbox",
+    time: "09:12",
+    attachments: 1,
+    starred: true,
+    unread: true,
+    initials: "AC",
+  },
+  {
+    id: "m2",
+    sender: "GitHub",
+    subject: "Security alert: dependency vulnerability",
+    preview: "A vulnerable package was detected in hanauta-plugin-mail.",
+    body: "Dependabot found a known vulnerability in one dependency.\nPlease review and upgrade.",
+    tag: "Alerts",
+    tone: "secondary",
+    folder: "Inbox",
+    time: "08:41",
+    attachments: 0,
+    starred: false,
+    unread: true,
+    initials: "GH",
+  },
+  {
+    id: "m3",
+    sender: "Equipe Produto",
+    subject: "Resumo da sprint e próximos passos",
+    preview: "Fechamos 92% dos itens planejados. Seguem prioridades da semana.",
+    body: "Pessoal,\n\nResumo da sprint:\n- Entregas principais concluídas\n- Débitos técnicos mapeados\n\nPróximos passos no board.",
+    tag: "Primary",
+    tone: "tertiary",
+    folder: "Sent",
+    time: "Ontem",
+    attachments: 0,
+    starred: false,
+    unread: false,
+    initials: "EP",
+  },
+  {
+    id: "m4",
+    sender: "Você",
+    subject: "Rascunho: follow-up com fornecedor",
+    preview: "Pontos principais para revisar antes do envio final.",
+    body: "Rascunho salvo localmente.",
+    tag: "Draft",
+    tone: "tertiary",
+    folder: "Drafts",
+    time: "10:21",
+    attachments: 0,
+    starred: false,
+    unread: false,
+    initials: "VC",
+  },
+  {
+    id: "m5",
+    sender: "Você",
+    subject: "Nota de saída: update de deploy",
+    preview: "Mensagem aguardando envio pelo SMTP.",
+    body: "Mensagem pendente na fila de saída.",
+    tag: "Queue",
+    tone: "secondary",
+    folder: "Outbox",
+    time: "10:02",
+    attachments: 0,
+    starred: false,
+    unread: true,
+    initials: "VC",
+  },
+  {
+    id: "m6",
+    sender: "Spam Sender",
+    subject: "Oferta não solicitada",
+    preview: "Mensagem removida para a lixeira.",
+    body: "Conteúdo removido.",
+    tag: "Trash",
+    tone: "secondary",
+    folder: "Trash",
+    time: "Ontem",
+    attachments: 0,
+    starred: false,
+    unread: false,
+    initials: "SS",
+  },
+];
 
 const folders = [
-  { label: "Inbox", icon: Inbox, count: 24, active: true },
-  { label: "Starred", icon: Star, count: 8 },
-  { label: "Sent", icon: Send, count: 13 },
-  { label: "Drafts", icon: Pencil, count: 3 },
-  { label: "Archive", icon: Archive, count: 92 },
-  { label: "Trash", icon: Trash2, count: 6 },
+  { label: "Inbox", icon: Inbox },
+  { label: "Starred", icon: Star },
+  { label: "Sent", icon: Send },
+  { label: "Drafts", icon: Pencil },
+  { label: "Outbox", icon: Send },
+  { label: "Archive", icon: Archive },
+  { label: "Trash", icon: Trash2 },
 ];
 
 const toneClasses = {
@@ -43,10 +133,12 @@ const toneClasses = {
   tertiary: "bg-[#aec6ff]/15 text-[#aec6ff] border-[#aec6ff]/20",
 };
 
-function IconButton({ children, className = "", title }) {
+function IconButton({ children, className = "", title, ...props }) {
   return (
     <button
+      type="button"
       title={title}
+      {...props}
       className={`grid h-10 w-10 place-items-center rounded-full text-[#958e9c] transition hover:bg-[#282935] hover:text-[#d4bbff] active:scale-95 ${className}`}
     >
       {children}
@@ -65,25 +157,174 @@ function Chip({ children, className = "" }) {
 }
 
 export default function HanautaEmailInterface() {
+  const [activeFolder, setActiveFolder] = useState("Inbox");
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeBody, setComposeBody] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileName, setProfileName] = useState("Hanauta User");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+  const [signature, setSignature] = useState("Sent from Hanauta Mail");
+  const [accounts, setAccounts] = useState([]);
+  const [accountForm, setAccountForm] = useState({
+    label: "",
+    email: "",
+    imapHost: "",
+    imapPort: "993",
+    smtpHost: "",
+    smtpPort: "587",
+  });
 
   const filteredEmails = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return emails;
-    return emails.filter((email) =>
-      [email.sender, email.subject, email.preview, email.tag]
+    return emails.filter((email) => {
+      const folderMatches =
+        activeFolder === "Starred"
+          ? Boolean(email.starred)
+          : email.folder === activeFolder;
+      if (!folderMatches) {
+        return false;
+      }
+      if (!normalized) {
+        return true;
+      }
+      return [email.sender, email.subject, email.preview, email.tag]
         .join(" ")
         .toLowerCase()
-        .includes(normalized)
-    );
-  }, [query]);
+        .includes(normalized);
+    });
+  }, [query, activeFolder]);
 
   const selected = emails.find((email) => email.id === selectedId) ?? null;
+  const activeFolderMeta = folders.find((folder) => folder.label === activeFolder) ?? folders[0];
+  const showToast = (message) => {
+    setToastMessage(message);
+    window.setTimeout(() => {
+      setToastMessage("");
+    }, 1800);
+  };
+  const updateAccountForm = (key, value) => {
+    setAccountForm((prev) => ({ ...prev, [key]: value }));
+  };
+  const addAccount = () => {
+    if (!accountForm.email.trim() || !accountForm.imapHost.trim() || !accountForm.smtpHost.trim()) {
+      showToast("Fill email, IMAP host and SMTP host");
+      return;
+    }
+    setAccounts((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        label: accountForm.label.trim() || accountForm.email.trim(),
+        email: accountForm.email.trim(),
+        imapHost: accountForm.imapHost.trim(),
+        imapPort: accountForm.imapPort.trim() || "993",
+        smtpHost: accountForm.smtpHost.trim(),
+        smtpPort: accountForm.smtpPort.trim() || "587",
+      },
+    ]);
+    setAccountForm({
+      label: "",
+      email: "",
+      imapHost: "",
+      imapPort: "993",
+      smtpHost: "",
+      smtpPort: "587",
+    });
+    showToast("Mail account added");
+  };
+  const removeAccount = (id) => {
+    setAccounts((prev) => prev.filter((account) => account.id !== id));
+    showToast("Mail account removed");
+  };
+  const saveSettings = () => {
+    showToast("Mail settings saved");
+    setSettingsOpen(false);
+  };
+  const copyComposeBody = async () => {
+    const payload = composeBody || "";
+    if (!payload.trim()) {
+      showToast("Message body is empty");
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(payload);
+        showToast("Message body copied");
+        return;
+      }
+      throw new Error("Clipboard API unavailable");
+    } catch (_error) {
+      try {
+        const helper = document.createElement("textarea");
+        helper.value = payload;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "absolute";
+        helper.style.left = "-9999px";
+        document.body.appendChild(helper);
+        helper.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(helper);
+        if (ok) {
+          showToast("Message body copied");
+        } else {
+          showToast("Could not copy message body");
+        }
+      } catch (_fallbackError) {
+        showToast("Could not copy message body");
+      }
+    }
+  };
+
+  const openDefaultComposer = () => {
+    const subject = encodeURIComponent("Hanauta Mail");
+    const body = encodeURIComponent((composeBody || "").trim());
+    window.location.href = "mailto:?subject=" + subject + "&body=" + body;
+    showToast("Opened default mail client");
+  };
+
+  const folderCounts = useMemo(() => {
+    const counts = {};
+    for (const folder of folders) {
+      counts[folder.label] = 0;
+    }
+    for (const email of emails) {
+      if (counts[email.folder] !== undefined) {
+        counts[email.folder] += 1;
+      }
+      if (email.starred && counts.Starred !== undefined) {
+        counts.Starred += 1;
+      }
+    }
+    return counts;
+  }, []);
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#12131d] text-[#e2e1f1]">
+      <style>{`
+        .rail-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(212, 187, 255, 0.38) rgba(40, 41, 53, 0.55);
+        }
+        .rail-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .rail-scroll::-webkit-scrollbar-track {
+          background: rgba(40, 41, 53, 0.55);
+          border-radius: 999px;
+        }
+        .rail-scroll::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(212, 187, 255, 0.55), rgba(149, 142, 156, 0.55));
+          border-radius: 999px;
+          border: 1px solid rgba(212, 187, 255, 0.2);
+        }
+        .rail-scroll::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, rgba(212, 187, 255, 0.75), rgba(149, 142, 156, 0.75));
+        }
+      `}</style>
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,#27283a_0%,#12131d_42%,#0c0d18_100%)]" />
       <div className="pointer-events-none fixed left-1/2 top-1/2 h-[680px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4bbff]/5 blur-[130px]" />
       <div className="pointer-events-none fixed bottom-[-100px] right-[-80px] h-[460px] w-[460px] rounded-full bg-[#ffb2bc]/5 blur-[110px]" />
@@ -93,24 +334,97 @@ export default function HanautaEmailInterface() {
         <div className="mb-12 font-sans text-xl font-black tracking-tighter text-[#d4bbff]">
           H
         </div>
-        <nav className="flex flex-1 flex-col gap-5">
-          <button className="group relative rounded-2xl bg-[#d4bbff]/20 p-3 text-[#d4bbff] transition active:scale-95">
+        <nav className="rail-scroll flex flex-1 flex-col items-center gap-3 overflow-y-auto pr-1">
+          <button
+            onClick={() => setActiveFolder("Inbox")}
+            title="Inbox"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Inbox"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
             <Mail className="h-5 w-5" />
             <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
-              Mail
+              Inbox
             </span>
           </button>
-          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
-            <Clock className="h-5 w-5" />
+          <button
+            onClick={() => setActiveFolder("Sent")}
+            title="Enviados"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Sent"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
+            <Send className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Enviados
+            </span>
           </button>
-          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
-            <Sparkles className="h-5 w-5" />
+          <button
+            onClick={() => setActiveFolder("Drafts")}
+            title="Rascunhos"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Drafts"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
+            <Pencil className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Rascunhos
+            </span>
           </button>
-          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
-            <ShieldCheck className="h-5 w-5" />
+          <button
+            onClick={() => setActiveFolder("Outbox")}
+            title="Saída"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Outbox"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
+            <Reply className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Saída
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveFolder("Archive")}
+            title="Arquivo"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Archive"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
+            <Archive className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Arquivo
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveFolder("Trash")}
+            title="Lixeira"
+            className={`group relative rounded-2xl p-3 transition active:scale-95 ${
+              activeFolder === "Trash"
+                ? "bg-[#d4bbff]/20 text-[#d4bbff]"
+                : "text-[#4a4550] hover:bg-[#282935] hover:text-[#d4bbff]/80"
+            }`}
+          >
+            <Trash2 className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Lixeira
+            </span>
           </button>
         </nav>
-        <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
+        <button
+          title="Open mail settings"
+          onClick={() => setSettingsOpen(true)}
+          className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95"
+        >
           <Settings className="h-5 w-5" />
         </button>
       </aside>
@@ -121,10 +435,8 @@ export default function HanautaEmailInterface() {
             <Menu className="h-5 w-5" />
           </IconButton>
           <div>
-            <h1 className="font-sans text-lg font-black tracking-tight text-[#bb9af7]">
-              Hanauta Mail
-            </h1>
-            <p className="text-xs font-medium text-[#958e9c]">Calm inbox, sharp actions</p>
+            <h1 className="font-sans text-lg font-black tracking-tight text-[#bb9af7]">Hanauta Mail</h1>
+            <p className="text-xs font-medium text-[#958e9c]">Caixa de e-mail padrão</p>
           </div>
         </div>
 
@@ -139,10 +451,6 @@ export default function HanautaEmailInterface() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-2 rounded-full bg-[#1a1b26] px-3 py-1.5 lg:flex">
-            <Sparkles className="h-4 w-4 text-[#d4bbff]" />
-            <span className="text-xs font-bold">AI triage on</span>
-          </div>
           <IconButton>
             <Bell className="h-5 w-5" />
           </IconButton>
@@ -168,8 +476,10 @@ export default function HanautaEmailInterface() {
               return (
                 <button
                   key={folder.label}
+                  onClick={() => setActiveFolder(folder.label)}
+                  title={`Open ${folder.label}`}
                   className={`flex w-full items-center justify-between rounded-3xl px-4 py-3 text-left transition active:scale-[0.98] ${
-                    folder.active
+                    activeFolder === folder.label
                       ? "bg-[#d4bbff]/15 text-[#d4bbff]"
                       : "text-[#ccc3d2] hover:bg-[#282935]/70 hover:text-[#e2e1f1]"
                   }`}
@@ -178,7 +488,7 @@ export default function HanautaEmailInterface() {
                     <Icon className="h-5 w-5" />
                     {folder.label}
                   </span>
-                  <span className="text-xs text-[#958e9c]">{folder.count}</span>
+                  <span className="text-xs text-[#958e9c]">{folderCounts[folder.label] || 0}</span>
                 </button>
               );
             })}
@@ -204,7 +514,7 @@ export default function HanautaEmailInterface() {
         <section className="rounded-[2rem] border border-[#4a4550]/20 bg-[#1a1b26]/40 p-3 backdrop-blur-2xl">
           <div className="mb-3 flex items-center justify-between px-3 py-2">
             <div>
-              <h2 className="text-xl font-black tracking-tight">Inbox</h2>
+              <h2 className="text-xl font-black tracking-tight">{activeFolder}</h2>
               <p className="text-sm text-[#958e9c]">{filteredEmails.length} messages today</p>
             </div>
             <button className="flex items-center gap-2 rounded-full bg-[#282935] px-3 py-2 text-xs font-bold text-[#ccc3d2] transition hover:text-[#d4bbff]">
@@ -221,7 +531,7 @@ export default function HanautaEmailInterface() {
           <div className="space-y-2 overflow-y-auto pr-1">
             {filteredEmails.length === 0 && (
               <div className="rounded-[1.7rem] border border-[#4a4550]/30 bg-[#1e1f2a]/55 p-6 text-center text-sm text-[#958e9c]">
-                Inbox is empty. No sample emails are bundled for privacy.
+                {activeFolderMeta.label} is empty. No sample emails are bundled for privacy.
               </div>
             )}
             {filteredEmails.map((email) => (
@@ -303,13 +613,13 @@ export default function HanautaEmailInterface() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <IconButton title="Archive">
+              <IconButton title="Archive message">
                 <Archive className="h-5 w-5" />
               </IconButton>
-              <IconButton title="Star">
+              <IconButton title="Star message">
                 <Star className="h-5 w-5" />
               </IconButton>
-              <IconButton title="More">
+              <IconButton title="More actions">
                 <MoreVertical className="h-5 w-5" />
               </IconButton>
             </div>
@@ -357,10 +667,10 @@ export default function HanautaEmailInterface() {
                   placeholder="Write a calm, clear reply..."
                   className="min-w-0 flex-1 border-none bg-transparent px-2 text-sm text-[#e2e1f1] placeholder:text-[#958e9c] focus:outline-none focus:ring-0"
                 />
-                <IconButton>
+                <IconButton title="Attach file to reply">
                   <Paperclip className="h-5 w-5" />
                 </IconButton>
-                <IconButton>
+                <IconButton title="Send reply">
                   <Send className="h-5 w-5" />
                 </IconButton>
               </div>
@@ -400,7 +710,7 @@ export default function HanautaEmailInterface() {
                   <h3 className="text-lg font-black tracking-tight">New Message</h3>
                   <p className="text-xs text-[#958e9c]">Focused compose mode</p>
                 </div>
-                <IconButton onClick={() => setComposeOpen(false)}>
+                <IconButton title="Close compose" onClick={() => setComposeOpen(false)}>
                   <X className="h-5 w-5" />
                 </IconButton>
               </div>
@@ -416,23 +726,206 @@ export default function HanautaEmailInterface() {
                 <textarea
                   placeholder="Write something kind, direct, and useful..."
                   rows={10}
+                  value={composeBody}
+                  onChange={(event) => setComposeBody(event.target.value)}
                   className="w-full resize-none rounded-[1.5rem] border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-4 text-sm leading-7 outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
                 />
               </div>
               <div className="flex items-center justify-between border-t border-[#4a4550]/20 px-6 py-4">
                 <div className="flex gap-2">
-                  <IconButton>
+                  <IconButton
+                    title="Attach file"
+                    onClick={() => {
+                      const picker = document.createElement("input");
+                      picker.type = "file";
+                      picker.multiple = true;
+                      picker.onchange = () => {
+                        const files = picker.files ? Array.from(picker.files) : [];
+                        if (files.length === 0) {
+                          return;
+                        }
+                        const label =
+                          files.length === 1
+                            ? `Attached: ${files[0].name}`
+                            : `${files.length} files attached`;
+                        showToast(label);
+                      };
+                      picker.click();
+                    }}
+                  >
                     <Paperclip className="h-5 w-5" />
                   </IconButton>
-                  <IconButton>
+                  <IconButton
+                    title="Copy message body"
+                    onClick={copyComposeBody}
+                  >
                     <Sparkles className="h-5 w-5" />
                   </IconButton>
                 </div>
-                <button className="flex items-center gap-2 rounded-full bg-[#d4bbff] px-6 py-3 font-black text-[#3d1b72] transition hover:scale-[1.02] active:scale-95">
+                <button onClick={openDefaultComposer} className="flex items-center gap-2 rounded-full bg-[#d4bbff] px-6 py-3 font-black text-[#3d1b72] transition hover:scale-[1.02] active:scale-95">
                   Send message <Send className="h-4 w-4" />
                 </button>
               </div>
             </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {settingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-[#0c0d18]/55 p-6 backdrop-blur-sm"
+            onClick={() => setSettingsOpen(false)}
+          >
+            <motion.section
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              onClick={(event) => event.stopPropagation()}
+              className="mx-auto h-full w-full max-w-4xl overflow-hidden rounded-[2rem] border border-[#4a4550]/30 bg-[#1a1b26]/95 shadow-[0_30px_90px_-40px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[#4a4550]/20 px-6 py-4">
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">Mail Settings</h3>
+                  <p className="text-xs text-[#958e9c]">Accounts, sender profile, and signature</p>
+                </div>
+                <IconButton title="Close settings" onClick={() => setSettingsOpen(false)}>
+                  <X className="h-5 w-5" />
+                </IconButton>
+              </div>
+
+              <div className="grid h-[calc(100%-72px)] grid-cols-1 gap-5 overflow-y-auto p-6 lg:grid-cols-2">
+                <div className="space-y-4 rounded-[1.5rem] border border-[#4a4550]/25 bg-[#12131d]/45 p-5">
+                  <h4 className="text-sm font-black uppercase tracking-[0.16em] text-[#d4bbff]/75">Sender Profile</h4>
+                  <input
+                    value={profileName}
+                    onChange={(event) => setProfileName(event.target.value)}
+                    placeholder="Display name"
+                    className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                  <input
+                    value={profileEmail}
+                    onChange={(event) => setProfileEmail(event.target.value)}
+                    placeholder="From email"
+                    className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                  <input
+                    value={profileAvatarUrl}
+                    onChange={(event) => setProfileAvatarUrl(event.target.value)}
+                    placeholder="Profile image URL"
+                    className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                  <textarea
+                    value={signature}
+                    onChange={(event) => setSignature(event.target.value)}
+                    rows={4}
+                    placeholder="Signature"
+                    className="w-full resize-none rounded-[1.25rem] border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                </div>
+
+                <div className="space-y-4 rounded-[1.5rem] border border-[#4a4550]/25 bg-[#12131d]/45 p-5">
+                  <h4 className="text-sm font-black uppercase tracking-[0.16em] text-[#d4bbff]/75">Add IMAP/SMTP Account</h4>
+                  <input
+                    value={accountForm.label}
+                    onChange={(event) => updateAccountForm("label", event.target.value)}
+                    placeholder="Account label (optional)"
+                    className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                  <input
+                    value={accountForm.email}
+                    onChange={(event) => updateAccountForm("email", event.target.value)}
+                    placeholder="Email address"
+                    className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={accountForm.imapHost}
+                      onChange={(event) => updateAccountForm("imapHost", event.target.value)}
+                      placeholder="IMAP host"
+                      className="col-span-2 rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                    />
+                    <input
+                      value={accountForm.imapPort}
+                      onChange={(event) => updateAccountForm("imapPort", event.target.value)}
+                      placeholder="IMAP port"
+                      className="rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={accountForm.smtpHost}
+                      onChange={(event) => updateAccountForm("smtpHost", event.target.value)}
+                      placeholder="SMTP host"
+                      className="col-span-2 rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                    />
+                    <input
+                      value={accountForm.smtpPort}
+                      onChange={(event) => updateAccountForm("smtpPort", event.target.value)}
+                      placeholder="SMTP port"
+                      className="rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addAccount}
+                    className="w-full rounded-full bg-[#d4bbff] px-5 py-3 text-sm font-black text-[#3d1b72] transition hover:scale-[1.02] active:scale-95"
+                  >
+                    Add account
+                  </button>
+                </div>
+
+                <div className="lg:col-span-2 rounded-[1.5rem] border border-[#4a4550]/25 bg-[#12131d]/45 p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h4 className="text-sm font-black uppercase tracking-[0.16em] text-[#d4bbff]/75">Configured Accounts</h4>
+                    <button
+                      type="button"
+                      onClick={saveSettings}
+                      className="rounded-full bg-[#d4bbff] px-5 py-2.5 text-sm font-black text-[#3d1b72] transition hover:scale-[1.02] active:scale-95"
+                    >
+                      Save settings
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {accounts.length === 0 && (
+                      <p className="text-sm text-[#958e9c]">No accounts yet. Add your first IMAP/SMTP account above.</p>
+                    )}
+                    {accounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="flex items-center justify-between rounded-2xl border border-[#4a4550]/30 bg-[#1e1f2a]/60 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[#e2e1f1]">{account.label}</p>
+                          <p className="truncate text-xs text-[#958e9c]">
+                            {account.email} · IMAP {account.imapHost}:{account.imapPort} · SMTP {account.smtpHost}:{account.smtpPort}
+                          </p>
+                        </div>
+                        <IconButton title="Remove account" onClick={() => removeAccount(account.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </IconButton>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            className="fixed bottom-6 left-1/2 z-[120] -translate-x-1/2 rounded-full border border-[#d4bbff]/30 bg-[#1e1f2a]/95 px-4 py-2 text-sm font-bold text-[#e2e1f1] shadow-[0_16px_34px_-18px_rgba(0,0,0,.75)] backdrop-blur-xl"
+          >
+            {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>

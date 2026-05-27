@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
-SOURCE_DESKTOP="$REPO_ROOT/hanauta/config/applications/hanauta-mail.desktop"
+SOURCE_DESKTOP="$REPO_ROOT/config/applications/hanauta-mail.desktop"
 TARGET_DIR="${HOME}/.local/share/applications"
 TARGET_DESKTOP="$TARGET_DIR/hanauta-mail.desktop"
 DESKTOP_ID="hanauta-mail.desktop"

@@ -14,7 +14,7 @@ from pyqt.shared.runtime import entry_command
 STATE_DIR = Path.home() / ".local" / "state" / "hanauta" / "email-client"
 STORAGE_CONFIG_PATH = STATE_DIR / "storage.json"
 DEFAULT_DB_PATH = STATE_DIR / "mail.sqlite3"
-EMAIL_CLIENT = Path(__file__).resolve().parents[1] / "email-client" / "email_client.py"
+EMAIL_CLIENT = Path(__file__).resolve().parent / "email_client.py"
 
 
 def load_storage_config() -> dict[str, str]:
