@@ -1,0 +1,441 @@
+import React, { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Archive,
+  Bell,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Inbox,
+  Mail,
+  MailOpen,
+  Menu,
+  MoreVertical,
+  Paperclip,
+  Pencil,
+  Plus,
+  Reply,
+  Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Trash2,
+  UserCircle2,
+  X,
+} from "lucide-react";
+
+const emails = [];
+
+const folders = [
+  { label: "Inbox", icon: Inbox, count: 24, active: true },
+  { label: "Starred", icon: Star, count: 8 },
+  { label: "Sent", icon: Send, count: 13 },
+  { label: "Drafts", icon: Pencil, count: 3 },
+  { label: "Archive", icon: Archive, count: 92 },
+  { label: "Trash", icon: Trash2, count: 6 },
+];
+
+const toneClasses = {
+  primary: "bg-[#d4bbff]/15 text-[#d4bbff] border-[#d4bbff]/20",
+  secondary: "bg-[#ffb2bc]/15 text-[#ffb2bc] border-[#ffb2bc]/20",
+  tertiary: "bg-[#aec6ff]/15 text-[#aec6ff] border-[#aec6ff]/20",
+};
+
+function IconButton({ children, className = "", title }) {
+  return (
+    <button
+      title={title}
+      className={`grid h-10 w-10 place-items-center rounded-full text-[#958e9c] transition hover:bg-[#282935] hover:text-[#d4bbff] active:scale-95 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Chip({ children, className = "" }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+export default function HanautaEmailInterface() {
+  const [selectedId, setSelectedId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [composeOpen, setComposeOpen] = useState(false);
+
+  const filteredEmails = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return emails;
+    return emails.filter((email) =>
+      [email.sender, email.subject, email.preview, email.tag]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized)
+    );
+  }, [query]);
+
+  const selected = emails.find((email) => email.id === selectedId) ?? null;
+
+  return (
+    <div className="min-h-screen overflow-hidden bg-[#12131d] text-[#e2e1f1]">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,#27283a_0%,#12131d_42%,#0c0d18_100%)]" />
+      <div className="pointer-events-none fixed left-1/2 top-1/2 h-[680px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4bbff]/5 blur-[130px]" />
+      <div className="pointer-events-none fixed bottom-[-100px] right-[-80px] h-[460px] w-[460px] rounded-full bg-[#ffb2bc]/5 blur-[110px]" />
+      <div className="pointer-events-none fixed inset-0 opacity-[0.045] mix-blend-overlay [background-image:linear-gradient(rgba(255,255,255,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.12)_1px,transparent_1px)] [background-size:42px_42px]" />
+
+      <aside className="fixed left-0 top-0 z-50 flex h-screen w-20 flex-col items-center bg-[#1a1b26] py-8 shadow-[40px_0_60px_-15px_rgba(212,187,255,0.05)]">
+        <div className="mb-12 font-sans text-xl font-black tracking-tighter text-[#d4bbff]">
+          H
+        </div>
+        <nav className="flex flex-1 flex-col gap-5">
+          <button className="group relative rounded-2xl bg-[#d4bbff]/20 p-3 text-[#d4bbff] transition active:scale-95">
+            <Mail className="h-5 w-5" />
+            <span className="absolute left-full ml-4 whitespace-nowrap rounded-xl bg-[#333440] px-3 py-1 text-xs opacity-0 transition group-hover:opacity-100">
+              Mail
+            </span>
+          </button>
+          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
+            <Clock className="h-5 w-5" />
+          </button>
+          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
+            <Sparkles className="h-5 w-5" />
+          </button>
+          <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
+            <ShieldCheck className="h-5 w-5" />
+          </button>
+        </nav>
+        <button className="rounded-2xl p-3 text-[#4a4550] transition hover:bg-[#282935] hover:text-[#d4bbff]/80 active:scale-95">
+          <Settings className="h-5 w-5" />
+        </button>
+      </aside>
+
+      <header className="fixed left-20 right-0 top-0 z-40 flex h-16 items-center justify-between border-b border-[#4a4550]/20 bg-[#12131d]/80 px-8 backdrop-blur-xl">
+        <div className="flex items-center gap-5">
+          <IconButton className="md:hidden">
+            <Menu className="h-5 w-5" />
+          </IconButton>
+          <div>
+            <h1 className="font-sans text-lg font-black tracking-tight text-[#bb9af7]">
+              Hanauta Mail
+            </h1>
+            <p className="text-xs font-medium text-[#958e9c]">Calm inbox, sharp actions</p>
+          </div>
+        </div>
+
+        <div className="hidden min-w-[360px] max-w-xl flex-1 items-center rounded-full border border-[#4a4550]/30 bg-[#1a1b26]/70 px-4 py-2 md:mx-8 md:flex">
+          <Search className="mr-3 h-4 w-4 text-[#958e9c]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search mail, sender, tag..."
+            className="w-full border-none bg-transparent text-sm text-[#e2e1f1] placeholder:text-[#958e9c] focus:outline-none focus:ring-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 rounded-full bg-[#1a1b26] px-3 py-1.5 lg:flex">
+            <Sparkles className="h-4 w-4 text-[#d4bbff]" />
+            <span className="text-xs font-bold">AI triage on</span>
+          </div>
+          <IconButton>
+            <Bell className="h-5 w-5" />
+          </IconButton>
+          <IconButton>
+            <UserCircle2 className="h-5 w-5" />
+          </IconButton>
+        </div>
+      </header>
+
+      <main className="relative z-10 grid h-screen grid-cols-[280px_minmax(360px,460px)_1fr] gap-5 pl-24 pr-6 pt-20">
+        <section className="hidden rounded-[2rem] border border-[#4a4550]/20 bg-[#1a1b26]/45 p-4 backdrop-blur-2xl lg:block">
+          <button
+            onClick={() => setComposeOpen(true)}
+            className="mb-6 flex w-full items-center justify-center gap-3 rounded-full bg-[#d4bbff] px-5 py-4 font-bold text-[#3d1b72] shadow-[0_18px_35px_-18px_rgba(212,187,255,0.8)] transition hover:scale-[1.02] active:scale-95"
+          >
+            <Plus className="h-5 w-5" />
+            Compose
+          </button>
+
+          <div className="space-y-2">
+            {folders.map((folder) => {
+              const Icon = folder.icon;
+              return (
+                <button
+                  key={folder.label}
+                  className={`flex w-full items-center justify-between rounded-3xl px-4 py-3 text-left transition active:scale-[0.98] ${
+                    folder.active
+                      ? "bg-[#d4bbff]/15 text-[#d4bbff]"
+                      : "text-[#ccc3d2] hover:bg-[#282935]/70 hover:text-[#e2e1f1]"
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold">
+                    <Icon className="h-5 w-5" />
+                    {folder.label}
+                  </span>
+                  <span className="text-xs text-[#958e9c]">{folder.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 rounded-[2rem] border border-[#d4bbff]/10 bg-[#282935]/50 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d4bbff]/70">
+                Inbox Health
+              </p>
+              <CheckCircle2 className="h-4 w-4 text-[#d4bbff]" />
+            </div>
+            <h3 className="mb-2 text-2xl font-black tracking-tight">82%</h3>
+            <p className="text-sm leading-6 text-[#ccc3d2]">
+              Most urgent messages are already grouped. Three drafts need your attention.
+            </p>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#333440]">
+              <div className="h-full w-[82%] rounded-full bg-[#d4bbff] shadow-[0_0_18px_rgba(212,187,255,.55)]" />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-[#4a4550]/20 bg-[#1a1b26]/40 p-3 backdrop-blur-2xl">
+          <div className="mb-3 flex items-center justify-between px-3 py-2">
+            <div>
+              <h2 className="text-xl font-black tracking-tight">Inbox</h2>
+              <p className="text-sm text-[#958e9c]">{filteredEmails.length} messages today</p>
+            </div>
+            <button className="flex items-center gap-2 rounded-full bg-[#282935] px-3 py-2 text-xs font-bold text-[#ccc3d2] transition hover:text-[#d4bbff]">
+              Priority <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mb-4 flex gap-2 px-3">
+            <Chip className="border-[#d4bbff]/20 bg-[#d4bbff]/15 text-[#d4bbff]">Primary</Chip>
+            <Chip className="border-[#4a4550]/30 bg-[#282935]/60 text-[#ccc3d2]">Social</Chip>
+            <Chip className="border-[#4a4550]/30 bg-[#282935]/60 text-[#ccc3d2]">Alerts</Chip>
+          </div>
+
+          <div className="space-y-2 overflow-y-auto pr-1">
+            {filteredEmails.length === 0 && (
+              <div className="rounded-[1.7rem] border border-[#4a4550]/30 bg-[#1e1f2a]/55 p-6 text-center text-sm text-[#958e9c]">
+                Inbox is empty. No sample emails are bundled for privacy.
+              </div>
+            )}
+            {filteredEmails.map((email) => (
+              <motion.button
+                layout
+                key={email.id}
+                onClick={() => setSelectedId(email.id)}
+                className={`group w-full rounded-[1.7rem] border p-4 text-left transition ${
+                  selectedId === email.id
+                    ? "border-[#d4bbff]/35 bg-[#282935] shadow-[0_20px_45px_-30px_rgba(212,187,255,.55)]"
+                    : "border-transparent bg-[#1e1f2a]/55 hover:border-[#4a4550]/30 hover:bg-[#282935]/70"
+                }`}
+              >
+                <div className="mb-3 flex items-start gap-3">
+                  <div
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border text-sm font-black ${toneClasses[email.tone]}`}
+                  >
+                    {email.initials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-extrabold text-[#e2e1f1]">
+                        {email.sender}
+                      </p>
+                      <span className="shrink-0 text-xs text-[#958e9c]">{email.time}</span>
+                    </div>
+                    <p className="mt-1 truncate text-sm font-bold text-[#ccc3d2]">
+                      {email.subject}
+                    </p>
+                  </div>
+                </div>
+                <p className="line-clamp-2 text-sm leading-6 text-[#958e9c]">{email.preview}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Chip className={`${toneClasses[email.tone]}`}>{email.tag}</Chip>
+                    {email.attachments > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#958e9c]">
+                        <Paperclip className="h-3.5 w-3.5" /> {email.attachments}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {email.starred && <Star className="h-4 w-4 fill-[#d4bbff] text-[#d4bbff]" />}
+                    {email.unread ? (
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#d4bbff] shadow-[0_0_14px_rgba(212,187,255,.9)]" />
+                    ) : (
+                      <MailOpen className="h-4 w-4 text-[#4a4550]" />
+                    )}
+                  </div>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </section>
+
+        <section className="relative hidden overflow-hidden rounded-[2rem] border border-[#4a4550]/20 bg-[#1a1b26]/40 backdrop-blur-2xl md:block">
+          {!selected && (
+            <div className="grid h-full place-items-center p-8 text-center">
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-[#e2e1f1]">No message selected</h2>
+                <p className="mt-2 text-sm text-[#958e9c]">
+                  Your inbox starts empty by design. Connect an account to load messages.
+                </p>
+              </div>
+            </div>
+          )}
+          {selected && (
+            <>
+          <div className="flex items-center justify-between border-b border-[#4a4550]/20 px-7 py-5">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-[#d4bbff]/20 bg-[#d4bbff]/15 text-sm font-black text-[#d4bbff]">
+                {selected.initials}
+              </div>
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-[#e2e1f1]">{selected.subject}</h2>
+                <p className="text-sm text-[#958e9c]">
+                  From <span className="font-bold text-[#ccc3d2]">{selected.sender}</span> · {selected.time}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <IconButton title="Archive">
+                <Archive className="h-5 w-5" />
+              </IconButton>
+              <IconButton title="Star">
+                <Star className="h-5 w-5" />
+              </IconButton>
+              <IconButton title="More">
+                <MoreVertical className="h-5 w-5" />
+              </IconButton>
+            </div>
+          </div>
+
+          <div className="grid h-[calc(100vh-9.5rem)] grid-rows-[1fr_auto]">
+            <article className="overflow-y-auto px-10 py-9">
+              <div className="mb-8 flex flex-wrap gap-2">
+                <Chip className={`${toneClasses[selected.tone]}`}>{selected.tag}</Chip>
+                <Chip className="border-[#4a4550]/30 bg-[#282935]/60 text-[#ccc3d2]">
+                  <Sparkles className="h-3.5 w-3.5" /> Suggested priority
+                </Chip>
+              </div>
+
+              <div className="max-w-3xl whitespace-pre-line text-[15px] leading-8 text-[#e2e1f1]">
+                {selected.body}
+              </div>
+
+              {selected.attachments > 0 && (
+                <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3">
+                  {Array.from({ length: selected.attachments }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-[1.5rem] border border-[#4a4550]/25 bg-[#1e1f2a]/75 p-4"
+                    >
+                      <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#d4bbff]/15 text-[#d4bbff]">
+                        <Paperclip className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold">Attachment_{index + 1}.pdf</p>
+                        <p className="text-xs text-[#958e9c]">2.4 MB</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <div className="border-t border-[#4a4550]/20 bg-[#12131d]/35 p-5">
+              <div className="flex items-center gap-3 rounded-[1.7rem] border border-[#4a4550]/25 bg-[#1e1f2a]/80 p-3">
+                <button className="flex items-center gap-2 rounded-full bg-[#d4bbff] px-5 py-3 font-bold text-[#3d1b72] transition hover:scale-[1.02] active:scale-95">
+                  <Reply className="h-4 w-4" /> Reply
+                </button>
+                <input
+                  placeholder="Write a calm, clear reply..."
+                  className="min-w-0 flex-1 border-none bg-transparent px-2 text-sm text-[#e2e1f1] placeholder:text-[#958e9c] focus:outline-none focus:ring-0"
+                />
+                <IconButton>
+                  <Paperclip className="h-5 w-5" />
+                </IconButton>
+                <IconButton>
+                  <Send className="h-5 w-5" />
+                </IconButton>
+              </div>
+            </div>
+          </div>
+            </>
+          )}
+        </section>
+      </main>
+
+      <button
+        onClick={() => setComposeOpen(true)}
+        className="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-full bg-[#d4bbff] px-7 py-5 font-black text-[#3d1b72] shadow-[0_22px_44px_-16px_rgba(212,187,255,.55)] transition hover:scale-105 active:scale-95 lg:hidden"
+      >
+        <Plus className="h-5 w-5" /> Compose
+      </button>
+
+      <AnimatePresence>
+        {composeOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-end bg-[#0c0d18]/45 p-6 backdrop-blur-sm"
+            onClick={() => setComposeOpen(false)}
+          >
+            <motion.section
+              initial={{ opacity: 0, y: 40, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.98 }}
+              transition={{ type: "spring", damping: 22, stiffness: 260 }}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-[#4a4550]/30 bg-[#1a1b26]/95 shadow-[0_30px_90px_-40px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[#4a4550]/20 px-6 py-4">
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">New Message</h3>
+                  <p className="text-xs text-[#958e9c]">Focused compose mode</p>
+                </div>
+                <IconButton onClick={() => setComposeOpen(false)}>
+                  <X className="h-5 w-5" />
+                </IconButton>
+              </div>
+              <div className="space-y-3 p-6">
+                <input
+                  placeholder="To"
+                  className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                />
+                <input
+                  placeholder="Subject"
+                  className="w-full rounded-2xl border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-3 text-sm outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                />
+                <textarea
+                  placeholder="Write something kind, direct, and useful..."
+                  rows={10}
+                  className="w-full resize-none rounded-[1.5rem] border border-[#4a4550]/25 bg-[#12131d]/65 px-4 py-4 text-sm leading-7 outline-none transition placeholder:text-[#958e9c] focus:border-[#d4bbff]/50"
+                />
+              </div>
+              <div className="flex items-center justify-between border-t border-[#4a4550]/20 px-6 py-4">
+                <div className="flex gap-2">
+                  <IconButton>
+                    <Paperclip className="h-5 w-5" />
+                  </IconButton>
+                  <IconButton>
+                    <Sparkles className="h-5 w-5" />
+                  </IconButton>
+                </div>
+                <button className="flex items-center gap-2 rounded-full bg-[#d4bbff] px-6 py-3 font-black text-[#3d1b72] transition hover:scale-[1.02] active:scale-95">
+                  Send message <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

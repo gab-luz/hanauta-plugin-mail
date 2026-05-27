@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Hanauta Mail
+Comment=Open the Hanauta Mail desktop client
+Exec=/usr/bin/env python3 /mnt/outros/DEV/hanauta-plugin-mail/email_client.py %u
+Icon=hanauta-mail
+Terminal=false
+Type=Application
+Categories=Network;Email;
+StartupNotify=true
+MimeType=x-scheme-handler/mailto;
